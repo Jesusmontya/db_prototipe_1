@@ -6,9 +6,13 @@ from models import db, Paciente, Cita, NotaClinica
 
 app = Flask(__name__)
 
-# --- SEGURIDAD Y CONEXIÓN A SUPABASE ---
-app.secret_key = 'Pavel_Secret_Key_2026_Secure'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:PavelKong31@db.mgqognqhtituwqerhumj.supabase.co:5432/postgres'
+# ==========================================
+# CONFIGURACIÓN PARA RENDER Y SUPABASE
+# ==========================================
+app.secret_key = os.environ.get('SECRET_KEY', 'Pavel_Secret_Key_2026_Secure')
+
+# Usa la variable de Render, y si no está, usa tu conexión de Supabase directa
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://postgres:PavelKong31@db.mgqognqhtituwqerhumj.supabase.co:5432/postgres')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
@@ -16,7 +20,7 @@ db.init_app(app)
 PASSWORD_MAESTRA = 'admin123'
 
 # ==========================================
-# CANDADO DE SESIÓN
+# PROTECCIÓN DE SESIÓN
 # ==========================================
 def login_requerido(f):
     @wraps(f)
@@ -27,21 +31,33 @@ def login_requerido(f):
     return decorated_function
 
 # ==========================================
-# RUTAS: LOGIN Y LOGOUT
+# RUTAS DE LOGIN (INDEX.HTML)
 # ==========================================
+@app.route('/')
+def inicio():
+    # Si ya tiene sesión activa, directo al dashboard. Si no, al login.
+    if 'logeado' in session:
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('login'))
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # Si intentan entrar a /login pero ya están logeados, los regresamos al dashboard
     if 'logeado' in session:
         return redirect(url_for('dashboard'))
 
+    # Cuando le das clic al botón "Ingresar" en tu index.html
     if request.method == 'POST':
-        if request.form.get('password') == PASSWORD_MAESTRA:
+        entrada = request.form.get('password')
+        
+        if entrada == PASSWORD_MAESTRA:
             session['logeado'] = True
             return redirect(url_for('dashboard'))
         else:
-            flash('Contraseña incorrecta', 'error')
+            flash('Contraseña incorrecta. Intenta de nuevo.', 'error')
             return redirect(url_for('login'))
     
+    # Si solo están cargando la página, mostramos el formulario
     return render_template('index.html')
 
 @app.route('/logout')
@@ -50,35 +66,43 @@ def logout():
     return redirect(url_for('login'))
 
 # ==========================================
-# RUTA PRINCIPAL: EL SISTEMA
+# RUTA DEL DASHBOARD
 # ==========================================
-@app.route('/')
 @app.route('/dashboard')
 @login_requerido
 def dashboard():
-    pacientes = Paciente.query.order_by(Paciente.id.desc()).all()
-    hoy = datetime.now().strftime('%Y-%m-%d')
-    citas_hoy = Cita.query.filter_by(fecha=hoy).order_by(Cita.hora.asc()).all()
+    try:
+        # Extraemos la información de Supabase
+        pacientes = Paciente.query.order_by(Paciente.id.desc()).all()
+        hoy = datetime.now().strftime('%Y-%m-%d')
+        citas_hoy = Cita.query.filter_by(fecha=hoy).order_by(Cita.hora.asc()).all()
 
-    return render_template('dashboard.html', 
-                           pacientes=pacientes, 
-                           total_pacientes=len(pacientes),
-                           citas_hoy=citas_hoy,
-                           total_citas_hoy=len(citas_hoy))
+        return render_template('dashboard.html', 
+                               pacientes=pacientes, 
+                               total_pacientes=len(pacientes),
+                               citas_hoy=citas_hoy,
+                               total_citas_hoy=len(citas_hoy))
+    except Exception as e:
+        # Pantalla de emergencia por si Supabase se desconecta
+        return f"""
+        <div style="font-family: sans-serif; padding: 40px; text-align: center;">
+            <h1 style="color: #e74c3c;">Error de conexión a la Base de Datos</h1>
+            <p>El sistema no pudo cargar la información de Supabase.</p>
+            <p style="background: #f8f9fa; padding: 15px; border-radius: 8px; color: #333; display: inline-block; text-align: left;"><b>Detalle técnico:</b> {str(e)}</p>
+            <br><br>
+            <a href="/logout" style="padding: 10px 20px; background: #3498db; color: white; text-decoration: none; border-radius: 5px;">Volver al Login</a>
+        </div>
+        """
 
 # ==========================================
-# RUTA: PESTAÑA INDIVIDUAL DEL EXPEDIENTE
+# RUTAS DE EXPEDIENTES Y API
 # ==========================================
 @app.route('/expediente/<int:id_paciente>')
 @login_requerido
 def ver_expediente(id_paciente):
-    # Busca al paciente por ID; si no existe, lanza error 404
     paciente = Paciente.query.get_or_404(id_paciente)
     return render_template('expediente.html', paciente=paciente)
 
-# ==========================================
-# API: GUARDAR Y EDITAR DATOS EN SUPABASE
-# ==========================================
 @app.route('/api/pacientes', methods=['POST'])
 @login_requerido
 def guardar_paciente():
@@ -98,7 +122,6 @@ def guardar_paciente():
     except Exception as e:
         db.session.rollback()
         flash('Error al guardar en base de datos', 'error')
-        
     return redirect(url_for('dashboard'))
 
 @app.route('/api/editar_paciente/<int:id_paciente>', methods=['POST'])
@@ -116,8 +139,6 @@ def editar_paciente(id_paciente):
     except Exception as e:
         db.session.rollback()
         flash('Error al actualizar el expediente', 'error')
-        
-    # Regresa a la pestaña del expediente, no al dashboard
     return redirect(url_for('ver_expediente', id_paciente=id_paciente))
 
 @app.route('/api/citas', methods=['POST'])
@@ -136,7 +157,6 @@ def guardar_cita():
     except Exception as e:
         db.session.rollback()
         flash('Error al agendar la cita', 'error')
-        
     return redirect(url_for('dashboard'))
 
 @app.route('/api/notas', methods=['POST'])
@@ -154,9 +174,9 @@ def guardar_nota():
     except Exception as e:
         db.session.rollback()
         flash('Error al guardar la nota', 'error')
-        
-    # Regresa a la pestaña del expediente
     return redirect(url_for('ver_expediente', id_paciente=paciente_id))
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # Configuración esencial para que los puertos no choquen en Render
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
