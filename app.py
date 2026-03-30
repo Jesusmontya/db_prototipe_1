@@ -7,15 +7,22 @@ from models import db, Paciente, Cita, NotaClinica
 app = Flask(__name__)
 
 # ==========================================
-# CONFIGURACIÓN PARA RENDER Y SUPABASE
+# CONFIGURACIÓN PARA RENDER Y SUPABASE (IPv4)
 # ==========================================
 app.secret_key = os.environ.get('SECRET_KEY', 'Pavel_Secret_Key_2026_Secure')
 
-# Usa la variable de Render, y si no está, usa tu conexión de Supabase directa
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://postgres:PavelKong31@db.mgqognqhtituwqerhumj.supabase.co:5432/postgres')
+# IMPORTANTE: Hemos cambiado el host a 'aws-0-us-east-1.pooler.supabase.com' 
+# y el puerto a '6543' para que Render (IPv4) pueda conectar sin errores.
+URL_POOLER_SUPABASE = 'postgresql://postgres.mgqognqhtituwqerhumj:PavelKong31@aws-0-us-east-1.pooler.supabase.com:6543/postgres'
+
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', URL_POOLER_SUPABASE)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
+
+# Esto crea las tablas en Supabase automáticamente si no existen
+with app.app_context():
+    db.create_all()
 
 PASSWORD_MAESTRA = 'admin123'
 
@@ -35,21 +42,17 @@ def login_requerido(f):
 # ==========================================
 @app.route('/')
 def inicio():
-    # Si ya tiene sesión activa, directo al dashboard. Si no, al login.
     if 'logeado' in session:
         return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # Si intentan entrar a /login pero ya están logeados, los regresamos al dashboard
     if 'logeado' in session:
         return redirect(url_for('dashboard'))
 
-    # Cuando le das clic al botón "Ingresar" en tu index.html
     if request.method == 'POST':
         entrada = request.form.get('password')
-        
         if entrada == PASSWORD_MAESTRA:
             session['logeado'] = True
             return redirect(url_for('dashboard'))
@@ -57,7 +60,6 @@ def login():
             flash('Contraseña incorrecta. Intenta de nuevo.', 'error')
             return redirect(url_for('login'))
     
-    # Si solo están cargando la página, mostramos el formulario
     return render_template('index.html')
 
 @app.route('/logout')
@@ -72,7 +74,6 @@ def logout():
 @login_requerido
 def dashboard():
     try:
-        # Extraemos la información de Supabase
         pacientes = Paciente.query.order_by(Paciente.id.desc()).all()
         hoy = datetime.now().strftime('%Y-%m-%d')
         citas_hoy = Cita.query.filter_by(fecha=hoy).order_by(Cita.hora.asc()).all()
@@ -83,12 +84,13 @@ def dashboard():
                                citas_hoy=citas_hoy,
                                total_citas_hoy=len(citas_hoy))
     except Exception as e:
-        # Pantalla de emergencia por si Supabase se desconecta
         return f"""
         <div style="font-family: sans-serif; padding: 40px; text-align: center;">
             <h1 style="color: #e74c3c;">Error de conexión a la Base de Datos</h1>
-            <p>El sistema no pudo cargar la información de Supabase.</p>
-            <p style="background: #f8f9fa; padding: 15px; border-radius: 8px; color: #333; display: inline-block; text-align: left;"><b>Detalle técnico:</b> {str(e)}</p>
+            <p>El sistema no pudo conectar con Supabase (IPv4 Pooler).</p>
+            <p style="background: #f8f9fa; padding: 15px; border-radius: 8px; color: #333; display: inline-block; text-align: left;">
+                <b>Detalle técnico:</b> {str(e)}
+            </p>
             <br><br>
             <a href="/logout" style="padding: 10px 20px; background: #3498db; color: white; text-decoration: none; border-radius: 5px;">Volver al Login</a>
         </div>
@@ -177,6 +179,5 @@ def guardar_nota():
     return redirect(url_for('ver_expediente', id_paciente=paciente_id))
 
 if __name__ == '__main__':
-    # Configuración esencial para que los puertos no choquen en Render
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
