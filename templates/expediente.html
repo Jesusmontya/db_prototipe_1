@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expediente - {{ paciente.nombre }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body { background-color: #f4f6f9; }
+        .nota-clinica { white-space: pre-wrap; }
+    </style>
+</head>
+<body class="p-3 p-md-4">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show shadow-sm" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom flex-wrap gap-3">
+        <div>
+            <h2 class="h3 mb-0 text-dark">{{ paciente.nombre }}</h2>
+            <span class="badge bg-primary fs-6 mt-1"><i class="fa-solid fa-folder me-1"></i> EXP-{{ paciente.num_expediente or 'S/N' }}</span>
+        </div>
+        <div>
+            <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#modalEditar">
+                <i class="fa-solid fa-pen me-1"></i> Editar Datos
+            </button>
+            <button class="btn btn-secondary" onclick="window.close()">
+                <i class="fa-solid fa-xmark me-1"></i> Cerrar Pestaña
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm border-0 sticky-top" style="top: 20px;">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="mb-0"><i class="fa-solid fa-address-card text-secondary me-2"></i>Perfil del Paciente</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item px-0 d-flex justify-content-between">
+                            <div><small class="text-muted d-block fw-bold">Edad</small><span>{{ paciente.edad or '--' }} años</span></div>
+                            <div><small class="text-muted d-block fw-bold">Sexo</small><span>{{ paciente.sexo or '--' }}</span></div>
+                        </li>
+                        <li class="list-group-item px-0">
+                            <small class="text-muted d-block fw-bold">Teléfono</small>
+                            <span><i class="fa-solid fa-phone fa-sm text-secondary me-1"></i> {{ paciente.telefono or '--' }}</span>
+                        </li>
+                        <li class="list-group-item px-0">
+                            <small class="text-muted d-block fw-bold">Motivo de consulta</small>
+                            <p class="mb-0 text-dark">{{ paciente.motivo_consulta or 'No especificado' }}</p>
+                        </li>
+                        <li class="list-group-item px-0 border-bottom-0">
+                            <small class="text-muted d-block fw-bold">Diagnóstico Actual</small>
+                            <div class="p-2 bg-light rounded mt-1 border border-warning border-opacity-50 text-muted">
+                                {{ paciente.diagnostico or 'Sin diagnóstico registrado.' }}
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            
+            <div class="card shadow-sm border-0 mb-4 border-top border-primary border-3">
+                <div class="card-body">
+                    <h5 class="card-title mb-3"><i class="fa-solid fa-notes-medical text-primary me-2"></i>Registrar Nueva Sesión</h5>
+                    <form method="POST" action="/api/notas">
+                        <input type="hidden" name="paciente_id" value="{{ paciente.id }}">
+                        <div class="mb-3">
+                            <textarea name="contenido" class="form-control bg-light" rows="4" placeholder="Escribe aquí el desarrollo de la sesión, observaciones, tareas..." required></textarea>
+                        </div>
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check me-1"></i> Guardar Nota de Sesión</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <h5 class="mb-3 text-secondary"><i class="fa-solid fa-clock-rotate-left me-2"></i>Historial Clínico</h5>
+            
+            {% for nota in paciente.notas|sort(attribute='fecha', reverse=True) %}
+            <div class="card shadow-sm border-0 mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
+                        <small class="text-muted fw-bold">
+                            <i class="fa-regular fa-calendar-check me-1"></i> {{ nota.fecha.strftime('%d/%m/%Y a las %H:%M') }}
+                        </small>
+                    </div>
+                    <p class="mb-0 text-dark nota-clinica">{{ nota.contenido }}</p>
+                </div>
+            </div>
+            {% else %}
+            <div class="card shadow-sm border-0 mb-3 bg-transparent shadow-none">
+                <div class="card-body text-center text-muted py-5">
+                    <i class="fa-solid fa-folder-open mb-3 fs-1 opacity-25"></i>
+                    <p class="mb-0">El expediente está en blanco.</p>
+                    <small>Aquí aparecerán las notas de las sesiones que registres.</small>
+                </div>
+            </div>
+            {% endfor %}
+
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalEditar" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fa-solid fa-user-pen me-2"></i>Editar Expediente</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" action="/api/editar_paciente/{{ paciente.id }}">
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label class="form-label fw-bold">Nombre completo</label>
+                                <input type="text" name="nombre" class="form-control" value="{{ paciente.nombre }}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-muted">Expediente</label>
+                                <input type="text" class="form-control bg-light" value="{{ paciente.num_expediente }}" disabled>
+                                <small class="text-muted" style="font-size: 0.7rem;">No se puede modificar</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Edad</label>
+                                <input type="number" name="edad" class="form-control" value="{{ paciente.edad }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Teléfono</label>
+                                <input type="tel" name="telefono" class="form-control" value="{{ paciente.telefono }}">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold">Motivo de Consulta</label>
+                                <textarea name="motivo" class="form-control" rows="2">{{ paciente.motivo_consulta }}</textarea>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold">Diagnóstico Actual</label>
+                                <textarea name="diagnostico" class="form-control" rows="3">{{ paciente.diagnostico }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save me-1"></i> Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
