@@ -3,352 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Gestor Psicológico</title>
+    <title>Acceso - PsicoGestor</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { background-color: #f4f6f9; overflow-x: hidden; }
-        .main-wrapper { min-height: 100vh; display: flex; }
-        .sidebar { min-height: 100vh; background-color: #2c3e50; width: 250px; transition: all 0.3s ease; }
-        .sidebar a { color: #ecf0f1; text-decoration: none; padding: 12px 20px; display: block; transition: 0.3s; cursor: pointer; }
-        .sidebar a:hover, .sidebar a.active { background-color: #34495e; border-left: 4px solid #3498db; }
-        .card-kpi-primary { border-left: 4px solid #3498db; }
-        .card-kpi-success { border-left: 4px solid #2ecc71; }
-        .card-kpi-warning { border-left: 4px solid #f1c40f; }
-        .card-kpi-danger { border-left: 4px solid #e74c3c; }
-        .time-slot { border-bottom: 1px dashed #dee2e6; padding: 10px 0; }
-        .time-slot:last-child { border-bottom: none; }
-        .time-label { width: 80px; font-weight: bold; color: #6c757d; font-size: 0.9rem; }
-
-        @media (max-width: 768px) {
-            .sidebar { position: fixed; left: -250px; z-index: 1050; height: 100vh; box-shadow: 2px 0 5px rgba(0,0,0,0.2); }
-            .sidebar.mostrar { left: 0; }
-            .overlay-mobile { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 1040; }
-            .overlay-mobile.mostrar { display: block; }
+        body { 
+            background-color: #2c3e50; 
+            height: 100vh; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            overflow: hidden;
+        }
+        .login-card {
+            max-width: 400px;
+            width: 90%;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }
+        .brand-icon {
+            font-size: 3.5rem;
+            color: #3498db;
         }
     </style>
 </head>
 <body>
 
-    <div id="overlay" class="overlay-mobile" onclick="toggleMenu()"></div>
-
-    <div class="main-wrapper">
-        <div id="sidebar" class="sidebar text-white">
-            <div class="p-4 text-center border-bottom border-secondary mb-3 d-flex justify-content-between align-items-center">
-                <h4 class="mb-0 w-100"><i class="fa-solid fa-brain text-info"></i> PsicoGestor</h4>
-                <i class="fa-solid fa-xmark d-md-none fs-4" style="cursor: pointer;" onclick="toggleMenu()"></i>
-            </div>
-            <nav id="menu-lateral">
-                <a id="menu-dashboard" class="nav-link active" onclick="cambiarVista('dashboard', this)"><i class="fa-solid fa-house me-2"></i> Inicio</a>
-                <a id="menu-pacientes" class="nav-link" onclick="cambiarVista('pacientes', this)"><i class="fa-solid fa-users me-2"></i> Pacientes</a>
-                <a id="menu-agenda" class="nav-link" onclick="cambiarVista('agenda', this)"><i class="fa-solid fa-calendar-days me-2"></i> Agenda</a>
-                <a id="menu-expedientes" class="nav-link" onclick="cambiarVista('expedientes', this)"><i class="fa-solid fa-folder-open me-2"></i> Expedientes</a>
-                <a id="menu-reportes" class="nav-link" onclick="cambiarVista('reportes', this)"><i class="fa-solid fa-chart-pie me-2"></i> Reportes</a>
-                <a href="/logout" class="nav-link text-danger mt-3"><i class="fa-solid fa-right-from-bracket me-2"></i> Cerrar Sesión</a>
-            </nav>
-        </div>
-
-        <div class="flex-grow-1 p-3 p-md-4 w-100">
+    <div class="card border-0 p-4 login-card bg-white">
+        <div class="card-body text-center">
             
-            <div class="d-md-none mb-3">
-                <button class="btn btn-dark shadow-sm" onclick="toggleMenu()"><i class="fa-solid fa-bars me-1"></i> Menú</button>
+            <div class="mb-4">
+                <i class="fa-solid fa-brain brand-icon mb-2"></i>
+                <h3 class="fw-bold text-dark mb-0">PsicoGestor</h3>
+                <p class="text-muted small mt-1">Acceso seguro al expediente clínico</p>
             </div>
 
-            {% with messages = get_flashed_messages(with_categories=true) %}
-              {% if messages %}
-                {% for category, message in messages %}
-                  <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show shadow-sm" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                  </div>
-                {% endfor %}
-              {% endif %}
-            {% endwith %}
+            <div id="alert-container"></div>
 
-            <div id="vista-dashboard" class="vista-seccion">
-                <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom flex-wrap gap-2">
-                    <h2 class="h4 mb-0 text-dark">Dashboard</h2>
-                    <div>
-                        <button class="btn btn-primary btn-sm btn-md" data-bs-toggle="modal" data-bs-target="#modalNuevaCita"><i class="fa-solid fa-plus me-1"></i> Nueva Cita</button>
-                        <button class="btn btn-success btn-sm btn-md" data-bs-toggle="modal" data-bs-target="#modalNuevoPaciente"><i class="fa-solid fa-user-plus me-1"></i> Nuevo Paciente</button>
-                    </div>
-                </div>
-
-                <div class="row mb-4 g-3">
-                    <div class="col-6 col-md-4">
-                        <div class="card card-kpi-primary shadow-sm border-0 h-100">
-                            <div class="card-body p-3 p-md-4">
-                                <h6 class="text-muted text-uppercase mb-2" style="font-size: 0.8rem;">Citas de Hoy</h6>
-                                <h3 class="mb-0">{{ total_citas_hoy }}</h3> 
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-4">
-                        <div class="card card-kpi-success shadow-sm border-0 h-100">
-                            <div class="card-body p-3 p-md-4">
-                                <h6 class="text-muted text-uppercase mb-2" style="font-size: 0.8rem;">Pacientes Activos</h6>
-                                <h3 class="mb-0">{{ total_pacientes }}</h3> 
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-4">
-                        <div class="card card-kpi-warning shadow-sm border-0 h-100">
-                            <div class="card-body p-3 p-md-4">
-                                <h6 class="text-muted text-uppercase mb-2" style="font-size: 0.8rem;">Pagos Pendientes</h6>
-                                <h3 class="mb-0">0</h3> 
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card shadow-sm border-0">
-                    <div class="card-header bg-white py-3">
-                        <h5 class="mb-0 text-dark"><i class="fa-regular fa-calendar-check me-2"></i>Agenda del Día</h5>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0 text-nowrap">
-                                <thead class="table-light">
-                                    <tr><th class="ps-3 ps-md-4">Hora</th><th>Paciente</th><th>Modalidad</th><th>Estado</th><th class="pe-3 pe-md-4 text-end">Acciones</th></tr>
-                                </thead>
-                                <tbody>
-                                    {% for cita in citas_hoy %}
-                                    <tr>
-                                        <td class="ps-3 ps-md-4 fw-bold">{{ cita.hora }}</td>
-                                        <td>{{ cita.paciente.nombre }}</td>
-                                        <td><span class="badge bg-light text-dark border">{{ cita.modalidad }}</span></td>
-                                        <td><span class="badge bg-warning text-dark">{{ cita.estado }}</span></td>
-                                        <td class="pe-3 pe-md-4 text-end">
-                                            <a href="/expediente/{{ cita.paciente.id }}" target="_blank" class="btn btn-sm btn-outline-primary">Ver</a>
-                                        </td>
-                                    </tr>
-                                    {% else %}
-                                    <tr><td colspan="5" class="text-center text-muted py-4">No hay citas programadas para hoy.</td></tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+            <div style="display: none;" id="jinja-data">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                  {% if messages %}
+                    {% for category, message in messages %}
+                      <span class="flash-msg" data-category="{{ category }}" data-message="{{ message }}"></span>
+                    {% endfor %}
+                  {% endif %}
+                {% endwith %}
             </div>
 
-            <div id="vista-pacientes" class="vista-seccion d-none">
-                <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom flex-wrap gap-2">
-                    <h2 class="h4 mb-0 text-dark">Directorio de Pacientes</h2>
-                    <button class="btn btn-success btn-sm btn-md" data-bs-toggle="modal" data-bs-target="#modalNuevoPaciente"><i class="fa-solid fa-user-plus me-1"></i> Nuevo Paciente</button>
+            <form action="/login" method="POST">
+                <div class="mb-4 text-start">
+                    <label class="form-label fw-bold text-secondary"><i class="fa-solid fa-lock me-1"></i> Contraseña Maestra</label>
+                    <input type="password" name="password" class="form-control form-control-lg bg-light" placeholder="••••••••••••" required autofocus>
                 </div>
-
-                <div class="card shadow-sm border-0">
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0 text-nowrap">
-                                <thead class="table-light">
-                                    <tr><th class="ps-3 ps-md-4">Nombre Completo</th><th>Edad</th><th>Contacto</th><th>Estado</th><th class="pe-3 pe-md-4 text-end">Acciones</th></tr>
-                                </thead>
-                                <tbody>
-                                    {% for p in pacientes %}
-                                    <tr>
-                                        <td class="ps-3 ps-md-4 fw-bold">{{ p.nombre }}</td>
-                                        <td>{{ p.edad or '--' }}</td>
-                                        <td>{{ p.telefono or '--' }}</td>
-                                        <td><span class="badge bg-success">{{ p.estado }}</span></td>
-                                        <td class="pe-3 pe-md-4 text-end">
-                                            <a href="/expediente/{{ p.id }}" target="_blank" class="btn btn-sm btn-light border">Perfil</a>
-                                        </td>
-                                    </tr>
-                                    {% else %}
-                                    <tr><td colspan="5" class="text-center text-muted py-4">Sin pacientes registrados en la base de datos.</td></tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="vista-expedientes" class="vista-seccion d-none">
-                <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
-                    <h2 class="h4 mb-0 text-dark"><i class="fa-solid fa-folder-open text-primary me-2"></i>Archivo Clínico</h2>
-                </div>
-
-                <div class="card shadow-sm border-0">
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0 text-nowrap">
-                                <thead class="table-light">
-                                    <tr><th class="ps-3 ps-md-4">No. Expediente</th><th>Paciente</th><th>Diagnóstico / Notas</th><th class="pe-3 pe-md-4 text-end">Acciones</th></tr>
-                                </thead>
-                                <tbody>
-                                    {% for p in pacientes %}
-                                    <tr>
-                                        <td class="ps-3 ps-md-4 text-primary fw-bold"><i class="fa-solid fa-folder me-1"></i> {{ p.num_expediente or 'S/N' }}</td>
-                                        <td class="fw-bold">{{ p.nombre }}</td>
-                                        <td class="text-truncate" style="max-width: 200px;">{{ p.diagnostico or 'Sin diagnóstico inicial' }}</td>
-                                        <td class="pe-3 pe-md-4 text-end">
-                                            <a href="/expediente/{{ p.id }}" target="_blank" class="btn btn-sm btn-primary">Abrir Expediente</a>
-                                        </td>
-                                    </tr>
-                                    {% else %}
-                                    <tr><td colspan="4" class="text-center text-muted py-4">El archivo clínico está vacío.</td></tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="vista-reportes" class="vista-seccion d-none">
-                <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom flex-wrap gap-2">
-                    <h2 class="h4 mb-0 text-dark"><i class="fa-solid fa-chart-pie text-primary me-2"></i>Reportes Mensuales</h2>
-                </div>
-                <div class="row">
-                    <div class="col-md-8 mb-4">
-                        <div class="card shadow-sm border-0 h-100">
-                            <div class="card-header bg-white py-3"><h6 class="mb-0 text-dark">Evolución de Sesiones</h6></div>
-                            <div class="card-body"><canvas id="graficaSesiones" height="150"></canvas></div>
-                        </div>
-                    </div>
-                    <div class="col-md-4 mb-4">
-                        <div class="card shadow-sm border-0 h-100">
-                            <div class="card-header bg-white py-3"><h6 class="mb-0 text-dark">Modalidad</h6></div>
-                            <div class="card-body d-flex flex-column justify-content-center"><canvas id="graficaModalidad" height="200"></canvas></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="vista-agenda" class="vista-seccion d-none">
-                <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom flex-wrap gap-2">
-                    <h2 class="h4 mb-0 text-dark"><i class="fa-solid fa-calendar-days text-primary me-2"></i>Agenda General</h2>
-                </div>
-                <div class="card shadow-sm border-0">
-                    <div class="card-body p-5 text-center text-muted">
-                        <i class="fa-regular fa-calendar fs-1 opacity-25 mb-2"></i>
-                        <p class="mb-0">Calendario completo próximamente</p>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <div class="modal fade" id="modalNuevoPaciente" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title"><i class="fa-solid fa-user-plus me-2"></i>Registrar Nuevo Paciente</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="formNuevoPaciente" method="POST" action="/api/pacientes">
-                        <div class="row g-3">
-                            <div class="col-md-8">
-                                <label class="form-label fw-bold">Nombre completo</label>
-                                <input type="text" class="form-control" name="nombre" required>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold text-primary">Expediente</label>
-                                <input type="text" class="form-control border-primary" name="num_expediente">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">Edad</label>
-                                <input type="number" class="form-control" name="edad">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">Sexo</label>
-                                <select class="form-select" name="sexo">
-                                    <option selected disabled value="">Seleccionar...</option>
-                                    <option value="F">Femenino</option>
-                                    <option value="M">Masculino</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">Teléfono</label>
-                                <input type="tel" class="form-control" name="telefono">
-                            </div>
-                            <div class="col-md-12">
-                                <label class="form-label fw-bold">Motivo de consulta</label>
-                                <textarea class="form-control" name="motivo" rows="2"></textarea>
-                            </div>
-                            <div class="col-md-12">
-                                <label class="form-label fw-bold">Diagnóstico preliminar</label>
-                                <textarea class="form-control" name="diagnostico" rows="2"></textarea>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" form="formNuevoPaciente" class="btn btn-success">Guardar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="modalNuevaCita" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title"><i class="fa-solid fa-calendar-plus me-2"></i>Agendar Cita</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="formNuevaCita" method="POST" action="/api/citas">
-                        <div class="mb-3">
-                            <label class="form-label">Paciente</label>
-                            <select class="form-select" name="paciente_id" required>
-                                <option selected disabled value="">Buscar paciente...</option>
-                                {% for p in pacientes %}
-                                <option value="{{ p.id }}">{{ p.nombre }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Fecha</label>
-                                <input type="date" class="form-control" name="fecha" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Hora</label>
-                                <input type="time" class="form-control" name="hora" required>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Modalidad</label>
-                            <select class="form-select" name="modalidad">
-                                <option value="presencial">Presencial (Consultorio)</option>
-                                <option value="online">Online (Videollamada)</option>
-                            </select>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" form="formNuevaCita" class="btn btn-primary">Agendar</button>
-                </div>
-            </div>
+                <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold">
+                    Ingresar <i class="fa-solid fa-arrow-right-to-bracket ms-1"></i>
+                </button>
+            </form>
+            
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
     <script>
-        function toggleMenu() {
-            document.getElementById('sidebar').classList.toggle('mostrar');
-            document.getElementById('overlay').classList.toggle('mostrar');
-        }
-        function cambiarVista(vistaDestino, elementoMenu = null) {
-            document.querySelectorAll('.vista-seccion').forEach(v => v.classList.add('d-none'));
-            document.getElementById('vista-' + vistaDestino).classList.remove('d-none');
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            if (elementoMenu) elementoMenu.classList.add('active');
-            if (window.innerWidth <= 768) toggleMenu();
-        }
-        const ctxSesiones = document.getElementById('graficaSesiones').getContext('2d');
-        new Chart(ctxSesiones, { type: 'line', data: { labels: ['Mes 1'], datasets: [{ label: 'Sesiones', data: [0]}] } });
-        const ctxModalidad = document.getElementById('graficaModalidad').getContext('2d');
-        new Chart(ctxModalidad, { type: 'doughnut', data: { labels: ['Sin datos'], datasets: [{ data: [1]}] } });
+        document.addEventListener("DOMContentLoaded", function() {
+            const mensajes = document.querySelectorAll('.flash-msg');
+            const contenedor = document.getElementById('alert-container');
+            
+            mensajes.forEach(msg => {
+                const category = msg.getAttribute('data-category');
+                const text = msg.getAttribute('data-message');
+                
+                // Evitamos usar las llaves juntas para que Jinja2 no marque error
+                const llaveFlask = '{' + '{'; 
+                
+                if (text && !text.includes(llaveFlask)) {
+                    const tipo = category === 'error' ? 'danger' : 'success';
+                    contenedor.innerHTML += `
+                        <div class="alert alert-${tipo} alert-dismissible fade show text-start py-2" role="alert">
+                            <i class="fa-solid fa-circle-exclamation me-1"></i> ${text}
+                            <button type="button" class="btn-close btn-sm" data-bs-dismiss="alert" aria-label="Close" style="padding: 0.8rem;"></button>
+                        </div>
+                    `;
+                }
+            });
+        });
     </script>
 </body>
 </html>
