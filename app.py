@@ -13,7 +13,8 @@ app.secret_key = os.environ.get('SECRET_KEY', 'Pavel_Secret_Key_2026_Secure')
 
 # IMPORTANTE: Hemos cambiado el host a 'aws-0-us-east-1.pooler.supabase.com' 
 # y el puerto a '6543' para que Render (IPv4) pueda conectar sin errores.
-URL_POOLER_SUPABASE = 'postgresql://postgres.mgqognqhtituwqerhumj:PavelKong31@aws-0-us-east-1.pooler.supabase.com:6543/postgres'
+# Reemplaza la configuración anterior por esta línea exacta:
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres.mgqognqhtituwqerhumj:PavelKong31@aws-0-us-east-1.pooler.supabase.com:6543/postgres'
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', URL_POOLER_SUPABASE)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
