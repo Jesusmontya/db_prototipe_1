@@ -47,19 +47,17 @@ def login_requerido(f):
     return decorated_function
 
 # ==========================================
-# RUTAS DE LOGIN
+# RUTA PRINCIPAL (SIEMPRE INDEX)
 # ==========================================
 @app.route('/')
 def inicio():
-    if 'logeado' in session:
-        return redirect(url_for('dashboard'))
-    return redirect(url_for('login'))
+    return render_template('index.html')
 
+# ==========================================
+# LOGIN
+# ==========================================
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if 'logeado' in session:
-        return redirect(url_for('dashboard'))
-
     if request.method == 'POST':
         entrada = request.form.get('password')
         if entrada == PASSWORD_MAESTRA:
