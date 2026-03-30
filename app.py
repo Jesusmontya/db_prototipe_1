@@ -7,22 +7,29 @@ from models import db, Paciente, Cita, NotaClinica
 app = Flask(__name__)
 
 # ==========================================
-# CONFIGURACIÓN PARA RENDER Y SUPABASE (IPv4)
+# CONFIGURACIÓN PARA RENDER Y SUPABASE
 # ==========================================
 app.secret_key = os.environ.get('SECRET_KEY', 'Pavel_Secret_Key_2026_Secure')
 
-# 1. DEFINIMOS LA URL DEL POOLER (IPv4 compatible con Render)
-# Nota el usuario: postgres.mgqognqhtituwqerhumj
-URL_POOLER_SUPABASE = 'postgresql://postgres.mgqognqhtituwqerhumj:PavelKong31@aws-0-us-east-1.pooler.supabase.com:6543/postgres'
+# URL CORRECTA (Direct connection - puerto 5432)
+DATABASE_URL_CORRECTA = 'postgresql://postgres:PavelKong31@db.mgqognqhtituwqerhumj.supabase.co:5432/postgres'
 
-# 2. SE LA PASAMOS A LA CONFIGURACIÓN (Primero busca en Environment, luego usa la fija)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', URL_POOLER_SUPABASE)
+# Tomar la de Render o usar la directa
+uri = os.environ.get('DATABASE_URL', DATABASE_URL_CORRECTA)
+
+# Fix importante para SQLAlchemy
+if uri.startswith("postgres://"):
+    uri = uri.replace("postgres://", "postgresql+psycopg2://", 1)
+else:
+    uri = uri.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# 3. INICIALIZAMOS LA BASE DE DATOS
+# Inicializar DB
 db.init_app(app)
 
-# 4. CREAMOS LAS TABLAS AUTOMÁTICAMENTE
+# Crear tablas automáticamente
 with app.app_context():
     db.create_all()
 
@@ -40,7 +47,7 @@ def login_requerido(f):
     return decorated_function
 
 # ==========================================
-# RUTAS DE LOGIN (INDEX.HTML)
+# RUTAS DE LOGIN
 # ==========================================
 @app.route('/')
 def inicio():
@@ -70,7 +77,7 @@ def logout():
     return redirect(url_for('login'))
 
 # ==========================================
-# RUTA DEL DASHBOARD
+# DASHBOARD
 # ==========================================
 @app.route('/dashboard')
 @login_requerido
@@ -89,7 +96,7 @@ def dashboard():
         return f"""
         <div style="font-family: sans-serif; padding: 40px; text-align: center;">
             <h1 style="color: #e74c3c;">Error de conexión a la Base de Datos</h1>
-            <p>El sistema no pudo conectar con Supabase (IPv4 Pooler).</p>
+            <p>El sistema no pudo conectar con Supabase.</p>
             <p style="background: #f8f9fa; padding: 15px; border-radius: 8px; color: #333; display: inline-block; text-align: left;">
                 <b>Detalle técnico:</b> {str(e)}
             </p>
@@ -99,7 +106,7 @@ def dashboard():
         """
 
 # ==========================================
-# RUTAS DE EXPEDIENTES Y API
+# EXPEDIENTES
 # ==========================================
 @app.route('/expediente/<int:id_paciente>')
 @login_requerido
@@ -107,6 +114,9 @@ def ver_expediente(id_paciente):
     paciente = Paciente.query.get_or_404(id_paciente)
     return render_template('expediente.html', paciente=paciente)
 
+# ==========================================
+# API PACIENTES
+# ==========================================
 @app.route('/api/pacientes', methods=['POST'])
 @login_requerido
 def guardar_paciente():
@@ -145,6 +155,9 @@ def editar_paciente(id_paciente):
         flash('Error al actualizar el expediente', 'error')
     return redirect(url_for('ver_expediente', id_paciente=id_paciente))
 
+# ==========================================
+# API CITAS
+# ==========================================
 @app.route('/api/citas', methods=['POST'])
 @login_requerido
 def guardar_cita():
@@ -163,6 +176,9 @@ def guardar_cita():
         flash('Error al agendar la cita', 'error')
     return redirect(url_for('dashboard'))
 
+# ==========================================
+# API NOTAS
+# ==========================================
 @app.route('/api/notas', methods=['POST'])
 @login_requerido
 def guardar_nota():
@@ -180,6 +196,9 @@ def guardar_nota():
         flash('Error al guardar la nota', 'error')
     return redirect(url_for('ver_expediente', id_paciente=paciente_id))
 
+# ==========================================
+# RUN
+# ==========================================
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
